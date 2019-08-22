@@ -1,5 +1,7 @@
 # alakhno_microservices
 
+[![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
+
 # ДЗ - Занятие 15
 
 ## 1. Первоначальная настройка репозитория
