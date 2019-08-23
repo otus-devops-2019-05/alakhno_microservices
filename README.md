@@ -30,3 +30,33 @@ docker ps --format "table {{.ID}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Names}}"
 docker inspect <u_container_id>
 docker inspect <u_image_id>
 ```
+## 3. Работа с docker-machine в GCE
+
+Создание хоста в GCE
+```shell script
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-zone europe-west1-b \
+  docker-host
+```
+
+Вывод списка хостов
+```shell script
+docker-machine ls
+```
+
+Переключение на хост по имени
+```shell script
+eval $(docker-machine env docker-host)
+```
+
+Переключение на локальный докер
+```shell script
+eval $(docker-machine env --unset)
+```
+
+Удаление хоста по имени
+```shell script
+docker-machine rm docker-host
+```
