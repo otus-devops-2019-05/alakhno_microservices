@@ -1,0 +1,18 @@
+REPOSITORY                TAG                 IMAGE ID            CREATED              SIZE
+alakhno/ubuntu-tmp-file   latest              d6e36c27e386        About a minute ago   120MB
+ubuntu                    16.04               5e13f8dd4c1a        4 weeks ago         120MB
+hello-world               latest              fce289e99eb9        7 months ago         1.84kB
+
+CONTAINER ID        IMAGE               CREATED AT                      NAMES
+4c7522c8002d        ubuntu:16.04        2019-08-23 09:29:45 +0300 MSK   silly_beaver
+
+docker inspect 4c7522c8002d
+docker inspect d6e36c27e386
+
+Контейнер создаётся на основе образа "Image". Дополнительно у него есть
+состояние "State", настройки сети "NetworkSettings" и т.п.
+
+Образ представляет собой слепок контейнера "Container", на основе которого
+можно создавать другие контейнеры.
+
+Где-то в интернете видел аналогию с пирогом (котейнер) и рецептом (образ).

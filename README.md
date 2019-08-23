@@ -12,3 +12,21 @@
     /github subscribe Otus-DevOps-2019-05/alakhno_microservices commits:all
     ```
 1. Настроена интеграция с TravisCI.
+
+## 2. Сравнение контейнеров и образов
+
+Список образов
+```shell script
+docker images
+```
+
+Список запущенных контенеров
+```shell script
+docker ps --format "table {{.ID}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Names}}"
+```
+
+Сравниваем контейнер с образом:
+```shell script
+docker inspect <u_container_id>
+docker inspect <u_image_id>
+```
