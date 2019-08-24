@@ -189,3 +189,21 @@ docker run --rm -ti tehbilly/htop
 ```shell script
 docker run --rm --pid host -ti tehbilly/htop
 ```
+## 5. Работа с Docker Hub
+
+Собираем образ:
+```shell script
+ docker build -t reddit:latest .
+```
+
+Логинимся и загружаем образ на Docker Hub:
+```shell script
+docker login
+docker tag reddit:latest alakhno88/otus-reddit:1.0
+docker push alakhno88/otus-reddit:1.0
+```
+
+Запускаем контейнер на основе образа:
+```shell script
+ docker run --name reddit -d -p 9292:9292 alakhno88/otus-reddit:1.0
+```
