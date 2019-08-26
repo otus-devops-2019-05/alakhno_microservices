@@ -207,3 +207,23 @@ docker push alakhno88/otus-reddit:1.0
 ```shell script
  docker run --name reddit -d -p 9292:9292 alakhno88/otus-reddit:1.0
 ```
+## 6. Поднятие инстансов с помощью Terraform
+
+В `docker-monolith/infra/terraform/main.tf` описана конфигурация для поднятия
+заданного количества инстансов и правила файервола для открытия порта 9292, на
+котором работает приложение.
+
+```shell script
+cd docker-monolith/infra/terraform
+terraform init
+terraform apply -var 'instance_count=2'
+```
+## 7. Плейбуки Ansible для уставноки докера и запуска образа приложения
+
+Установка докера и деплой приложения
+
+```shell script
+cd docker-monolith/infra/ansible
+ansible-playbook playbooks/install_docker.yml
+ansible-playbook playbooks/deploy_app.yml
+```

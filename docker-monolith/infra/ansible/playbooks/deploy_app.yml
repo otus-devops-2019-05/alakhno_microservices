@@ -1,0 +1,12 @@
+---
+- name: Deploy App
+  hosts: app
+  become: true
+  tasks:
+    - name: Run docker container from app image
+      docker_container:
+        name: reddit
+        state: started
+        image: alakhno88/otus-reddit:1.0
+        ports:
+          - "9292:9292"
