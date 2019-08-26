@@ -12,6 +12,11 @@ variable zone {
   default     = "europe-west1-b"
 }
 
+variable instance_image {
+  description = "Instance disk image"
+  default     = "ubuntu-1604-lts"
+}
+
 variable public_key_path {
   description = "Path to the public key used for ssh access"
 }

@@ -227,3 +227,22 @@ cd docker-monolith/infra/ansible
 ansible-playbook playbooks/install_docker.yml
 ansible-playbook playbooks/deploy_app.yml
 ```
+
+## 8. Шаблон Packer для образа с установленным Docker
+
+Собираем образ docker-base с установленным Docker:
+```shell script
+cd docker-monolith/infra
+packer build -var-file=packer/variables.json packer/docker.json
+```
+Создаём пару инстансов на основе собранного образа:
+```shell script
+cd docker-monolith/infra/terraform
+terraform apply -var 'instance_image=docker-base' -var 'instance_count=2'
+```
+
+Деплоим приложение на созданные инстансы:
+```shell script
+cd docker-monolith/infra/ansible
+ansible-playbook playbooks/deploy_app.yml
+```

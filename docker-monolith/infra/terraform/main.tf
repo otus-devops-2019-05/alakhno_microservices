@@ -13,7 +13,7 @@ resource "google_compute_instance" "app" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-1604-lts"
+      image = "${var.instance_image}"
     }
   }
 
