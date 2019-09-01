@@ -2,6 +2,51 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 16
+
+## 1. Dockerfile Linter
+
+Линтер проверяет докерфайлы на следование [рекомендуемым практикам](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/):
+
+ ```shell script
+ docker run --rm -i hadolint/hadolint < Dockerfile
+```
+
+## 2. Запуск приложения
+
+Создаём docker-host и подключаемся к нему:
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-zone europe-west1-b \
+  docker-host
+
+eval $(docker-machine env docker-host)
+```
+
+Собираем образы с сервисами:
+```shell script
+docker build -t alakhno88/post:1.0 ./post-py
+docker build -t alakhno88/comment:1.0 ./comment
+docker build -t alakhno88/ui:1.0 ./ui
+```
+
+Создаём сеть для приложения:
+```shell script
+docker network create reddit
+```
+
+Зарускаем контейнеры с приложением:
+```shell script
+docker run -d --network=reddit --network-alias=post_db --network-alias=comment_db mongo:latest
+docker run -d --network=reddit --network-alias=post alakhno88/post:1.0
+docker run -d --network=reddit --network-alias=comment alakhno88/comment:1.0
+docker run -d --network=reddit -p 9292:9292 alakhno88/ui:1.0
+```
+
 # ДЗ - Занятие 15
 
 ## 1. Первоначальная настройка репозитория
