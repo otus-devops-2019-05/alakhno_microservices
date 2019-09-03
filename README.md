@@ -47,6 +47,31 @@ docker run -d --network=reddit --network-alias=comment alakhno88/comment:1.0
 docker run -d --network=reddit -p 9292:9292 alakhno88/ui:1.0
 ```
 
+## 3. Запуск контейнеров с другими сетевыми алиасами
+
+```shell script
+docker run -d --network=reddit \
+    --network-alias=post2_db \
+    --network-alias=comment2_db \
+    mongo:latest
+
+docker run -d --network=reddit \
+    --network-alias=post2 \
+    -e "POST_DATABASE_HOST=post2_db" \
+    alakhno88/post:1.0
+
+docker run -d --network=reddit \
+    --network-alias=comment2 \
+    -e "COMMENT_DATABASE_HOST=comment2_db" \
+    alakhno88/comment:1.0
+
+docker run -d --network=reddit \
+    -p 9292:9292 \
+    -e "POST_SERVICE_HOST=post2" \
+    -e "COMMENT_SERVICE_HOST=comment2" \
+    alakhno88/ui:1.0
+```
+
 # ДЗ - Занятие 15
 
 ## 1. Первоначальная настройка репозитория
