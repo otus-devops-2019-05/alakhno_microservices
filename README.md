@@ -92,6 +92,25 @@ alakhno88/ui        2.0                 955b00188c3f        22 minutes ago      
 alakhno88/ui        1.0                 6e3493c268fa        44 minutes ago       771MB
 ```
 
+## 5. Подключение volume к контейнеру с MongoDB
+
+```shell script
+docker kill $(docker ps -q)
+
+docker volume create reddit_db
+docker run -d --network=reddit \
+    --network-alias=post_db \
+    --network-alias=comment_db \
+    -v reddit_db:/data/db \
+    mongo:latest
+
+docker run -d --network=reddit --network-alias=post alakhno88/post:1.0
+docker run -d --network=reddit --network-alias=comment alakhno88/comment:1.0
+docker run -d --network=reddit -p 9292:9292 alakhno88/ui:3.0
+```
+
+После перезапуска контейнеров посты остаются на месте.
+
 # ДЗ - Занятие 15
 
 ## 1. Первоначальная настройка репозитория
