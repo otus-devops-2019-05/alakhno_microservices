@@ -72,6 +72,26 @@ docker run -d --network=reddit \
     alakhno88/ui:1.0
 ```
 
+## 4. Минимизация размера образа
+
+Собираем образ на основе ruby:2.2-alpine
+```shell script
+docker build -t alakhno88/ui:3.0 -f ./ui/Dockerfile.1 ./ui
+```
+
+При установке пакетов в Alpine-образе используем флаг
+[`--no-cache`](https://github.com/gliderlabs/docker-alpine/blob/master/docs/usage.md#disabling-cache):
+```
+RUN apk add --no-cache build-base
+```
+
+В результате размер образа удалось уменьшить до 305Мб:
+```shell script
+alakhno88/ui        3.0                 06af6a174122        About a minute ago   305MB
+alakhno88/ui        2.0                 955b00188c3f        22 minutes ago       405MB
+alakhno88/ui        1.0                 6e3493c268fa        44 minutes ago       771MB
+```
+
 # ДЗ - Занятие 15
 
 ## 1. Первоначальная настройка репозитория
