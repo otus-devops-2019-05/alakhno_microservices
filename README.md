@@ -2,6 +2,115 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 16
+
+## 1. Dockerfile Linter
+
+Линтер проверяет докерфайлы на следование [рекомендуемым практикам](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/):
+
+ ```shell script
+ docker run --rm -i hadolint/hadolint < Dockerfile
+```
+
+## 2. Запуск приложения
+
+Создаём docker-host и подключаемся к нему:
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-zone europe-west1-b \
+  docker-host
+
+eval $(docker-machine env docker-host)
+```
+
+Собираем образы с сервисами:
+```shell script
+docker build -t alakhno88/post:1.0 ./post-py
+docker build -t alakhno88/comment:1.0 ./comment
+docker build -t alakhno88/ui:1.0 ./ui
+```
+
+Создаём сеть для приложения:
+```shell script
+docker network create reddit
+```
+
+Зарускаем контейнеры с приложением:
+```shell script
+docker run -d --network=reddit --network-alias=post_db --network-alias=comment_db mongo:latest
+docker run -d --network=reddit --network-alias=post alakhno88/post:1.0
+docker run -d --network=reddit --network-alias=comment alakhno88/comment:1.0
+docker run -d --network=reddit -p 9292:9292 alakhno88/ui:1.0
+```
+
+## 3. Запуск контейнеров с другими сетевыми алиасами
+
+```shell script
+docker run -d --network=reddit \
+    --network-alias=post2_db \
+    --network-alias=comment2_db \
+    mongo:latest
+
+docker run -d --network=reddit \
+    --network-alias=post2 \
+    -e "POST_DATABASE_HOST=post2_db" \
+    alakhno88/post:1.0
+
+docker run -d --network=reddit \
+    --network-alias=comment2 \
+    -e "COMMENT_DATABASE_HOST=comment2_db" \
+    alakhno88/comment:1.0
+
+docker run -d --network=reddit \
+    -p 9292:9292 \
+    -e "POST_SERVICE_HOST=post2" \
+    -e "COMMENT_SERVICE_HOST=comment2" \
+    alakhno88/ui:1.0
+```
+
+## 4. Минимизация размера образа
+
+Собираем образ на основе ruby:2.2-alpine
+```shell script
+docker build -t alakhno88/ui:3.0 -f ./ui/Dockerfile.1 ./ui
+```
+
+При установке пакетов в Alpine-образе используем флаг
+[`--no-cache`](https://github.com/gliderlabs/docker-alpine/blob/master/docs/usage.md#disabling-cache):
+```
+RUN apk add --no-cache build-base
+```
+
+В результате размер образа удалось уменьшить до 305Мб:
+```shell script
+alakhno88/ui        3.0                 06af6a174122        About a minute ago   305MB
+alakhno88/ui        2.0                 955b00188c3f        22 minutes ago       405MB
+alakhno88/ui        1.0                 6e3493c268fa        44 minutes ago       771MB
+```
+
+## 5. Подключение volume к контейнеру с MongoDB
+
+```shell script
+docker kill $(docker ps -q)
+
+docker volume create reddit_db
+docker run -d --network=reddit \
+    --network-alias=post_db \
+    --network-alias=comment_db \
+    -v reddit_db:/data/db \
+    mongo:latest
+
+docker run -d --network=reddit --network-alias=post alakhno88/post:1.0
+docker run -d --network=reddit --network-alias=comment alakhno88/comment:1.0
+docker run -d --network=reddit -p 9292:9292 alakhno88/ui:3.0
+```
+
+После перезапуска контейнеров посты остаются на месте.
+
 # ДЗ - Занятие 15
 
 ## 1. Первоначальная настройка репозитория
