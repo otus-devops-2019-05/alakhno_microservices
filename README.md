@@ -80,6 +80,14 @@ docker network connect front_net post
 docker network connect front_net comment
 ```
 
+## 5. Запуск приложения с помощью docker-compose
+
+```shell script
+export USERNAME=alakhno88
+docker-compose up -d
+docker-compose ps
+```
+
 # ДЗ - Занятие 16
 
 ## 1. Dockerfile Linter
