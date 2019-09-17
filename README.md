@@ -123,6 +123,29 @@ docker-compose up -d
 COMPOSE_PROJECT_NAME=reddit
 ```
 
+## 9. Изменение конфигурации при помощи docker-compose.override.yml
+
+Документация: https://docs.docker.com/compose/extends/
+
+Возможность изменять код без пересборки образа можно получить, примонтировав
+в контейнер папку с кодом, например:
+
+```shell script
+  ui:
+    command: ["puma", "--debug", "-w", "2"]
+    volumes:
+      - type: bind
+        source: ./ui
+        target: /app
+```
+
+При запуске через docker-machine такой способ сходу не работает, поскольку
+папка для монтирования в контейнер ищется на docker-host, а не на локальной
+машине.
+
+Если запускать docker-compose непосредственно с docker-host, предварительно
+скопировав туда код, то работает нормально.
+
 # ДЗ - Занятие 16
 
 ## 1. Dockerfile Linter
