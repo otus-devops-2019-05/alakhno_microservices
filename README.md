@@ -114,6 +114,15 @@ cp .env.example .env
 docker-compose up -d
 ```
 
+## 8. Задание базового имени проекта
+
+Базовое имя проекта можно задать при помощи переменной COMPOSE_PROJECT_NAME 
+в файле .env ([доки](https://docs.docker.com/compose/env-file/)):
+
+```shell script
+COMPOSE_PROJECT_NAME=reddit
+```
+
 # ДЗ - Занятие 16
 
 ## 1. Dockerfile Linter
