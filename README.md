@@ -2,6 +2,84 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 17
+
+## 1. None network driver
+
+```shell script
+docker run -ti --rm --network none joffotron/docker-net-tools -c ifconfig
+```
+
+Внутри контейнера из сетевых интерфейсов существует только loopback.
+
+## 2. Host network driver
+
+```shell script
+docker run -ti --rm --network host joffotron/docker-net-tools -c ifconfig
+docker-machine ssh docker-host ifconfig
+```
+
+Внутри контейнера доступны те же сетевые интерфейсы, что и на хосте.
+
+Если несколько раз запустить контейнер с nginx, то запустится только первый.
+Остальные не смогут запуститься, поскольку 80 порт на хосте уже занят.
+
+```shell script
+docker run --network host -d nginx
+docker run --network host -d nginx
+docker ps -a
+
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                      PORTS               NAMES
+97663565df90        nginx               "nginx -g 'daemon of…"   11 seconds ago      Exited (1) 7 seconds ago                        cocky_nash
+5c0775bda6b3        nginx               "nginx -g 'daemon of…"   48 seconds ago      Up 45 seconds                                   ecstatic_mclean
+
+docker logs 97663565df90
+2019/09/17 08:22:59 [emerg] 1#1: bind() to 0.0.0.0:80 failed (98: Address already in use)
+nginx: [emerg] bind() to 0.0.0.0:80 failed (98: Address already in use)
+
+docker kill $(docker ps -q)
+```
+
+## 3. Docker networks
+
+Запуск контейнера с драйвером none добавляет namespace с уникальным id.
+Запуск контейнера с драйвером host добавляет namespace с названием default.
+
+```shell script
+docker-machine ssh docker-host
+sudo ln -s /var/run/docker/netns /var/run/netns
+sudo ip netns
+
+docker run --rm --network none -d nginx
+docker run --rm --network host -d nginx
+sudo ip netns
+default
+52888f1a7b95
+```
+
+## 4. Bridge network driver
+
+Запускаем все контейнеры в одной bridge сети:
+ ```shell script
+docker network create reddit --driver bridge
+docker run -d --network=reddit --network-alias=post_db --network-alias=comment_db mongo:latest
+docker run -d --network=reddit --network-alias=post alakhno88/post:1.0
+docker run -d --network=reddit --network-alias=comment  alakhno88/comment:1.0
+docker run -d --network=reddit -p 9292:9292 alakhno88/ui:1.0
+```
+
+Запускаем контейнеры в двух bridge сетях, чтобы сервис ui не имел доступа к БД:
+```shell script
+docker network create back_net --subnet=10.0.2.0/24
+docker network create front_net --subnet=10.0.1.0/24
+docker run -d --network=front_net -p 9292:9292 --name ui  alakhno88/ui:1.0
+docker run -d --network=back_net --name comment  alakhno88/comment:1.0
+docker run -d --network=back_net --name post  alakhno88/post:1.0
+docker run -d --network=back_net --name mongo_db --network-alias=post_db --network-alias=comment_db mongo:latest
+docker network connect front_net post
+docker network connect front_net comment
+```
+
 # ДЗ - Занятие 16
 
 ## 1. Dockerfile Linter
