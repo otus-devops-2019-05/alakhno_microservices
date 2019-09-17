@@ -104,6 +104,16 @@ docker-compose ps
           - comment_db
 ```
 
+## 7. Параметризация docker-compose.yml
+
+Помимо переменных окружения, docker-compose может подхватывать значения
+из [файла .env](https://docs.docker.com/compose/env-file/):
+
+```shell script
+cp .env.example .env
+docker-compose up -d
+```
+
 # ДЗ - Занятие 16
 
 ## 1. Dockerfile Linter
