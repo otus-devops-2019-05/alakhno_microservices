@@ -88,6 +88,22 @@ docker-compose up -d
 docker-compose ps
 ```
 
+## 6. Доработка docker-compose.yml под кейс с несколькими сетями и алиасами
+
+Для контейнера с БД сетевые алиасы можно указать следующим образом:
+
+```shell script
+  mongo_db:
+    image: mongo:3.2
+    volumes:
+      - post_db:/data/db
+    networks:
+      back-net:
+        aliases:
+          - post_db
+          - comment_db
+```
+
 # ДЗ - Занятие 16
 
 ## 1. Dockerfile Linter
