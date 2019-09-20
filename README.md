@@ -2,6 +2,45 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 19
+
+## 1. Установка Gitlab CI
+
+Создаём машинку с докером для последующей установки Gitlab CI:
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-disk-size 100 \
+  --google-disk-type pd-standard \
+  --google-zone europe-west1-b \
+  gitlab-host
+
+eval $(docker-machine env gitlab-host)
+```
+
+Устанаваливаем docker-compose и подготавливаем окружение:
+```shell script
+docker-machine ssh gitlab-host
+sudo curl -L "https://github.com/docker/compose/releases/download/1.24.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+sudo mkdir -p /srv/gitlab/config /srv/gitlab/data /srv/gitlab/logs
+cd /srv/gitlab/
+# Создаём docker-compose.yml, прописывая свой external_url 'http://<YOUR-VM-IP>'
+# https://gist.github.com/Nklya/c2ca40a128758e2dc2244beb09caebe1
+sudo vim docker-compose.yml
+```
+
+Запускаем Gitlab CI:
+```shell script
+sudo docker-compose up -d
+```
+
+Установленный Gitlab будет доступен по адресу машинки gitlab-host.
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
