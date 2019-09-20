@@ -95,6 +95,27 @@ deploy_dev_job:
     url: http://dev.example.com
 ```
 
+Добавляем окружения stage и production:
+```yaml
+staging:
+  stage: stage
+  when: manual
+  script: 
+    - echo 'Deploy'
+  environment: 
+    name: stage
+    url: https://beta.example.com
+    
+production:
+  stage: production
+  when: manual
+  script: 
+    - echo 'Deploy'
+  environment: 
+    name: production
+    url: https://example.com
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
