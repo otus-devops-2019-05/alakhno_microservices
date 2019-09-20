@@ -127,6 +127,13 @@ staging:
   ...
 ```
 
+Изменение без указания тэга запустят пайплайн без job'ов staging и production.
+Изменение, помеченное тэгом в git запустит полный пайплайн:
+```yaml
+git tag 2.4.10
+git push gitlab gitlab-ci-1 --tags
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
