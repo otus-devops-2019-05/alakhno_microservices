@@ -134,6 +134,22 @@ git tag 2.4.10
 git push gitlab gitlab-ci-1 --tags
 ```
 
+# 5. Динамические окружения
+
+Выкатка на выделенный стенд для каждой ветки при помощи динамических окружений:
+```yaml
+branch review:
+  stage: review
+  script: echo "Deploy to $CI_ENVIRONMENT_SLUG"
+  environment: 
+    name: branch/$CI_COMMIT_REF_NAME
+    url: http://$CI_ENVIRONMENT_SLUG.example.com
+  only:
+    - branches
+  except: 
+    - master
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
