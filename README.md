@@ -41,6 +41,17 @@ sudo docker-compose up -d
 
 Установленный Gitlab будет доступен по адресу машинки gitlab-host.
 
+## 2. Установка и регистрация Gitlab Runner'а
+
+```shell script
+docker-machine ssh root@gitlab-host
+sudo docker run -d --name gitlab-runner --restart always \
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gitlab/gitlab-runner:latest
+sudo docker exec -it gitlab-runner gitlab-runner register --run-untagged --locked=false 
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
