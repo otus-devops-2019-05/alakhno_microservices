@@ -52,6 +52,13 @@ sudo docker run -d --name gitlab-runner --restart always \
 sudo docker exec -it gitlab-runner gitlab-runner register --run-untagged --locked=false 
 ```
 
+## 3. Тестируем reddit
+
+Добавим reddit в репозиторий:
+```shell script
+git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
