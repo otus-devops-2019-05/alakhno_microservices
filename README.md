@@ -59,6 +59,29 @@ sudo docker exec -it gitlab-runner gitlab-runner register --run-untagged --locke
 git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
 ```
 
+В .gitlab-ci.yml:
+1. Указываем `image: ruby:2.4.2` для запуска job'ов.
+1. Задаём переменную с адресом БД:
+    ```yaml
+    variables:
+      DATABASE_URL: 'mongodb://mongo/user_posts'
+    ```
+1. Прописываем установку reddit перед запуском job'ов:
+    ```yaml
+    before_script:
+      - cd reddit
+      - bundle install
+    ```
+1. Описываем запуск дополнительного контейнера с БД и запуск тестов:
+    ```yaml
+    test_unit_job:
+      stage: test
+      services:
+        - mongo:latest
+      script:
+        - ruby simpletest.rb
+    ```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
