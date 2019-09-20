@@ -82,6 +82,19 @@ git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
         - ruby simpletest.rb
     ```
 
+# 4. Работа с окружениями
+
+Добавляем dev-окружение:
+```yaml
+deploy_dev_job:
+  stage: review
+  script:
+    - echo 'Deploy'
+  environment: 
+    name: dev
+    url: http://dev.example.com
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
