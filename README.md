@@ -116,6 +116,17 @@ production:
     url: https://example.com
 ```
 
+При помощи `only` можно отключить возможность выкатки на stage и production
+непротегированных изменений. Должен стоять semver тэг в git, например, 2.4.10:
+```yaml
+staging:
+  stage: stage
+  when: manual
+  only:
+    - /^\d+\.\d+\.\d+/
+  ...
+```
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
