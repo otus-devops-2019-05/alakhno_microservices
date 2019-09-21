@@ -153,6 +153,7 @@ branch review:
 ## 6. Сборка контейнера с приложением reddit
 
 https://docs.gitlab.com/ce/ci/docker/using_docker_build.html
+https://docs.gitlab.com/runner/executors/docker.html#use-docker-in-docker-with-privileged-mode
 
 # ДЗ - Занятие 17
 
