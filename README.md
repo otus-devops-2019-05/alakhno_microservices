@@ -172,6 +172,9 @@ branch review:
 Значения переменных `CI_REGISTRY_IMAGE`, `CI_REGISTRY_USER` и `CI_REGISTRY_PASSWORD`
 задаются в интерфейсе Gitlab в разеделе Setting->CI/CD->Variables.
 
+deploy_dev_job стал иногда падать вот с такой ошибкой: https://gitlab.com/gitlab-org/gitlab-foss/issues/43286
+Перезапуск job'а через интерфейс Gitlab помогает.
+
 ## 7. Выкатка на dev окржуение
 
 Создаём машинку для dev стенда:
@@ -187,21 +190,18 @@ docker-machine create --driver google \
 Устанавливаем Gitlab Runner:
 ```shell script
 docker-machine ssh reddit-dev
-sudo usermod -aG docker $USER
-docker run -d --name gitlab-runner --restart always \
-  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  gitlab/gitlab-runner:latest
-docker exec -it gitlab-runner gitlab-runner register \
+curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | sudo bash
+sudo apt-get install gitlab-runner
+sudo usermod -aG docker gitlab-runner
+sudo gitlab-runner register \
   --non-interactive \
   --url "http://<GITLAB-HOST-IP>/" \
   --registration-token "<GITLAB-TOKEN>" \
-  --executor "docker" \
-  --docker-image alpine:latest \
+  --executor "shell" \
   --description "reddit-dev" \
   --tag-list "reddit-dev" \
   --run-untagged="false" \
-  --locked="false" \ 
+  --locked="false"
 ```
 
 # ДЗ - Занятие 17
