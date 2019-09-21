@@ -150,10 +150,26 @@ branch review:
     - master
 ```
 
-## 6. Сборка контейнера с приложением reddit
+## 6. Сборка образа с приложением reddit
 
-https://docs.gitlab.com/ce/ci/docker/using_docker_build.html
-https://docs.gitlab.com/runner/executors/docker.html#use-docker-in-docker-with-privileged-mode
+В папку `reddit` по аналогии с `docker-monolith` добавлены: `Dockerfile`,
+`db_config`, `mongod.conf` и `start.sh`. 
+
+Для сборки образа с приложением в документации Gitlab предлагается несколько
+подходов: https://docs.gitlab.com/ce/ci/docker/using_docker_build.html
+
+Был использован docker-in-docker c docker executor'ом, который был настроен в
+уже зарегистрированном gitlab-runner'е.
+
+При этом пришлось поменять конфигурацию в config.toml раннера, прописав
+`privileged = true`. Подробнее в документации:
+- https://docs.gitlab.com/runner/executors/docker.html#use-docker-in-docker-with-privileged-mode
+- https://docs.gitlab.com/ce/ci/docker/using_docker_build.html#tls-disabled
+
+Образ пушится в реджистри docker.io/alakhno88/otus-reddit.
+
+Значения переменных `CI_REGISTRY_IMAGE`, `CI_REGISTRY_USER` и `CI_REGISTRY_PASSWORD`
+задаются в интерфейсе Gitlab в разеделе Setting->CI/CD->Variables.
 
 # ДЗ - Занятие 17
 
