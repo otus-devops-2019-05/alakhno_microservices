@@ -44,12 +44,13 @@ sudo docker-compose up -d
 ## 2. Установка и регистрация Gitlab Runner'а
 
 ```shell script
-docker-machine ssh root@gitlab-host
-sudo docker run -d --name gitlab-runner --restart always \
+docker-machine ssh gitlab-host
+sudo usermod -aG docker $USER
+docker run -d --name gitlab-runner --restart always \
   -v /srv/gitlab-runner/config:/etc/gitlab-runner \
   -v /var/run/docker.sock:/var/run/docker.sock \
   gitlab/gitlab-runner:latest
-sudo docker exec -it gitlab-runner gitlab-runner register --run-untagged --locked=false 
+docker exec -it gitlab-runner gitlab-runner register --run-untagged --locked=false 
 ```
 
 ## 3. Тестируем reddit
@@ -170,6 +171,37 @@ branch review:
 
 Значения переменных `CI_REGISTRY_IMAGE`, `CI_REGISTRY_USER` и `CI_REGISTRY_PASSWORD`
 задаются в интерфейсе Gitlab в разеделе Setting->CI/CD->Variables.
+
+## 7. Выкатка на dev окржуение
+
+Создаём машинку для dev стенда:
+```shell script
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-disk-type pd-standard \
+  --google-zone europe-west1-b \
+  reddit-dev
+```
+
+Устанавливаем Gitlab Runner:
+```shell script
+docker-machine ssh reddit-dev
+sudo usermod -aG docker $USER
+docker run -d --name gitlab-runner --restart always \
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gitlab/gitlab-runner:latest
+docker exec -it gitlab-runner gitlab-runner register \
+  --non-interactive \
+  --url "http://<GITLAB-HOST-IP>/" \
+  --registration-token "<GITLAB-TOKEN>" \
+  --executor "shell" \
+  --description "reddit-dev" \
+  --tag-list "reddit-dev" \
+  --run-untagged="false" \
+  --locked="false" \ 
+```
 
 # ДЗ - Занятие 17
 
