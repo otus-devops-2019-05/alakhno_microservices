@@ -18,6 +18,11 @@ build_job:
   variables:
     # For non-Kubernetes executors, we use tcp://docker:2375/
     DOCKER_HOST: tcp://docker:2375/
+    # When using dind, it's wise to use the overlayfs driver for
+    # improved performance.
+    DOCKER_DRIVER: overlay2
+    # This will instruct Docker not to start over TLS.
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     - docker info
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin
