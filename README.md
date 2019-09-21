@@ -196,7 +196,8 @@ docker exec -it gitlab-runner gitlab-runner register \
   --non-interactive \
   --url "http://<GITLAB-HOST-IP>/" \
   --registration-token "<GITLAB-TOKEN>" \
-  --executor "shell" \
+  --executor "docker" \
+  --docker-image alpine:latest \
   --description "reddit-dev" \
   --tag-list "reddit-dev" \
   --run-untagged="false" \
