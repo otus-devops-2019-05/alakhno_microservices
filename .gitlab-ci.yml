@@ -10,17 +10,26 @@ stages:
 variables:
   DATABASE_URL: 'mongodb://mongo/user_posts'
 
-before_script:
-  - cd reddit
-  - bundle install
-
 build_job:
   stage: build
+  image: docker:stable
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
     - echo 'Building'
+    - cd reddit
+    - docker build --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
 
 test_unit_job:
   stage: test
+  before_script:
+    - cd reddit
+    - bundle install
   services:
     - mongo:latest
   script:

@@ -150,6 +150,10 @@ branch review:
     - master
 ```
 
+## 6. Сборка контейнера с приложением reddit
+
+https://docs.gitlab.com/ce/ci/docker/using_docker_build.html
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
