@@ -233,6 +233,7 @@ https://docs.gitlab.com/ee/user/project/integrations/slack.html
 
 Оповещения отправляются в канал https://devops-team-otus.slack.com/messages/CKC30BURZ
 
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
