@@ -2,6 +2,238 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 19
+
+## 1. Установка Gitlab CI
+
+Создаём машинку с докером для последующей установки Gitlab CI:
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-disk-size 100 \
+  --google-disk-type pd-standard \
+  --google-zone europe-west1-b \
+  gitlab-host
+
+eval $(docker-machine env gitlab-host)
+```
+
+Устанаваливаем docker-compose и подготавливаем окружение:
+```shell script
+docker-machine ssh gitlab-host
+sudo curl -L "https://github.com/docker/compose/releases/download/1.24.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+sudo mkdir -p /srv/gitlab/config /srv/gitlab/data /srv/gitlab/logs
+cd /srv/gitlab/
+# Создаём docker-compose.yml, прописывая свой external_url 'http://<YOUR-VM-IP>'
+# https://gist.github.com/Nklya/c2ca40a128758e2dc2244beb09caebe1
+sudo vim docker-compose.yml
+```
+
+Запускаем Gitlab CI:
+```shell script
+sudo docker-compose up -d
+```
+
+Установленный Gitlab будет доступен по адресу машинки gitlab-host.
+
+## 2. Установка и регистрация Gitlab Runner'а
+
+```shell script
+docker-machine ssh gitlab-host
+sudo usermod -aG docker $USER
+docker run -d --name gitlab-runner --restart always \
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gitlab/gitlab-runner:latest
+docker exec -it gitlab-runner gitlab-runner register --run-untagged --locked=false 
+```
+
+## 3. Тестируем reddit
+
+Добавим reddit в репозиторий:
+```shell script
+git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
+```
+
+В .gitlab-ci.yml:
+1. Указываем `image: ruby:2.4.2` для запуска job'ов.
+1. Задаём переменную с адресом БД:
+    ```yaml
+    variables:
+      DATABASE_URL: 'mongodb://mongo/user_posts'
+    ```
+1. Прописываем установку reddit перед запуском job'ов:
+    ```yaml
+    before_script:
+      - cd reddit
+      - bundle install
+    ```
+1. Описываем запуск дополнительного контейнера с БД и запуск тестов:
+    ```yaml
+    test_unit_job:
+      stage: test
+      services:
+        - mongo:latest
+      script:
+        - ruby simpletest.rb
+    ```
+
+# 4. Работа с окружениями
+
+Добавляем dev-окружение:
+```yaml
+deploy_dev_job:
+  stage: review
+  script:
+    - echo 'Deploy'
+  environment: 
+    name: dev
+    url: http://dev.example.com
+```
+
+Добавляем окружения stage и production:
+```yaml
+staging:
+  stage: stage
+  when: manual
+  script: 
+    - echo 'Deploy'
+  environment: 
+    name: stage
+    url: https://beta.example.com
+    
+production:
+  stage: production
+  when: manual
+  script: 
+    - echo 'Deploy'
+  environment: 
+    name: production
+    url: https://example.com
+```
+
+При помощи `only` можно отключить возможность выкатки на stage и production
+непротегированных изменений. Должен стоять semver тэг в git, например, 2.4.10:
+```yaml
+staging:
+  stage: stage
+  when: manual
+  only:
+    - /^\d+\.\d+\.\d+/
+  ...
+```
+
+Изменение без указания тэга запустят пайплайн без job'ов staging и production.
+Изменение, помеченное тэгом в git запустит полный пайплайн:
+```yaml
+git tag 2.4.10
+git push gitlab gitlab-ci-1 --tags
+```
+
+# 5. Динамические окружения
+
+Выкатка на выделенный стенд для каждой ветки при помощи динамических окружений:
+```yaml
+branch review:
+  stage: review
+  script: echo "Deploy to $CI_ENVIRONMENT_SLUG"
+  environment: 
+    name: branch/$CI_COMMIT_REF_NAME
+    url: http://$CI_ENVIRONMENT_SLUG.example.com
+  only:
+    - branches
+  except: 
+    - master
+```
+
+## 6. Сборка образа с приложением reddit
+
+В папку `reddit` по аналогии с `docker-monolith` добавлены: `Dockerfile`,
+`db_config`, `mongod.conf` и `start.sh`. 
+
+Для сборки образа с приложением в документации Gitlab предлагается несколько
+подходов: https://docs.gitlab.com/ce/ci/docker/using_docker_build.html
+
+Был использован docker-in-docker c docker executor'ом, который был настроен в
+уже зарегистрированном gitlab-runner'е.
+
+При этом пришлось поменять конфигурацию в config.toml раннера, прописав
+`privileged = true`. Подробнее в документации:
+- https://docs.gitlab.com/runner/executors/docker.html#use-docker-in-docker-with-privileged-mode
+- https://docs.gitlab.com/ce/ci/docker/using_docker_build.html#tls-disabled
+
+Образ пушится в реджистри docker.io/alakhno88/otus-reddit.
+
+Значения переменных `CI_REGISTRY_IMAGE`, `CI_REGISTRY_USER` и `CI_REGISTRY_PASSWORD`
+задаются в интерфейсе Gitlab в разеделе Setting->CI/CD->Variables.
+
+deploy_dev_job стал иногда падать вот с такой ошибкой: https://gitlab.com/gitlab-org/gitlab-foss/issues/43286
+Перезапуск job'а через интерфейс Gitlab помогает.
+
+## 7. Выкатка на dev окржуение
+
+Создаём машинку для dev стенда:
+```shell script
+docker-machine create --driver google \
+  --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+  --google-machine-type n1-standard-1 \
+  --google-disk-type pd-standard \
+  --google-zone europe-west1-b \
+  reddit-dev
+```
+
+Устанавливаем Gitlab Runner:
+```shell script
+docker-machine ssh reddit-dev
+curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | sudo bash
+sudo apt-get install gitlab-runner
+sudo usermod -aG docker gitlab-runner
+sudo gitlab-runner register \
+  --non-interactive \
+  --url "http://<GITLAB-HOST-IP>/" \
+  --registration-token "<GITLAB-TOKEN>" \
+  --executor "shell" \
+  --description "reddit-dev" \
+  --tag-list "reddit-dev" \
+  --run-untagged="false" \
+  --locked="false"
+```
+
+Добавляем в deploy_dev_job вызов скрипта для деплоя:
+```shell script
+deploy_dev_job:
+  stage: review
+  script:
+    - gitlab-ci/deploy.sh
+  tags:
+    - reddit-dev
+```
+
+Чтобы образы не накапливались на хосте, в скрипте прописываем:
+```shell script
+docker image prune -f
+```
+
+Перед запуском контейнера с приложением из нового образа, удаляем старый контейнер:
+```shell script
+[ "$(docker ps -a | grep reddit)" ] && docker rm -f reddit
+docker run -d --restart always -p 9292:9292 --name reddit $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+```
+Добавляем флаг `--restart always`, чтобы контейнер с приложением автоматически
+перезапускался после остановки (например, при перезагрузке хоста).
+
+## 8. Отправка оповещений в Slack
+
+https://docs.gitlab.com/ee/user/project/integrations/slack.html
+
+Оповещения отправляются в канал https://devops-team-otus.slack.com/messages/CKC30BURZ
+
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver

@@ -1,0 +1,92 @@
+image: ruby:2.4.2
+
+stages:
+  - build
+  - test
+  - review
+  - stage
+  - production
+
+variables:
+  DATABASE_URL: 'mongodb://mongo/user_posts'
+
+build_job:
+  stage: build
+  image: docker:stable
+  services:
+    - docker:dind
+  variables:
+    # For non-Kubernetes executors, we use tcp://docker:2375/
+    DOCKER_HOST: tcp://docker:2375/
+    # When using dind, it's wise to use the overlayfs driver for
+    # improved performance.
+    DOCKER_DRIVER: overlay2
+    # This will instruct Docker not to start over TLS.
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - docker info
+  script:
+    - echo 'Building'
+    - cd reddit
+    - docker build --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+
+test_unit_job:
+  stage: test
+  before_script:
+    - cd reddit
+    - bundle install
+  services:
+    - mongo:latest
+  script:
+    - ruby simpletest.rb
+
+test_integration_job:
+  stage: test
+  script:
+    - echo 'Testing 2'
+
+deploy_dev_job:
+  stage: review
+  script:
+    - gitlab-ci/deploy.sh
+  tags:
+    - reddit-dev
+  environment:
+    name: dev
+    url: http://dev.example.com
+
+branch review:
+  stage: review
+  script: echo "Deploy to $CI_ENVIRONMENT_SLUG"
+  environment:
+    name: branch/$CI_COMMIT_REF_NAME
+    url: http://$CI_ENVIRONMENT_SLUG.example.com
+  only:
+    - branches
+  except:
+    - master
+
+staging:
+  stage: stage
+  when: manual
+  only:
+    - /^\d+\.\d+\.\d+/
+  script:
+    - echo 'Deploy'
+  environment:
+    name: stage
+    url: https://beta.example.com
+
+production:
+  stage: production
+  when: manual
+  only:
+    - /^\d+\.\d+\.\d+/
+  script:
+    - echo 'Deploy'
+  environment:
+    name: production
+    url: https://example.com
