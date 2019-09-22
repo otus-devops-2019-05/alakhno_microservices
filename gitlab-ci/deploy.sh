@@ -2,6 +2,9 @@
 
 set -e
 
+# Удаляем старые образы, чтобы они не накапливались на хосте
+docker image prune -f
+
 echo 'Deploy'
 echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin
 docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
