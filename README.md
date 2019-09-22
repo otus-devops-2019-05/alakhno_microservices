@@ -204,6 +204,33 @@ sudo gitlab-runner register \
   --locked="false"
 ```
 
+Добавляем в deploy_dev_job вызов скрипта для деплоя:
+```shell script
+deploy_dev_job:
+  stage: review
+  script:
+    - gitlab-ci/deploy.sh
+  tags:
+    - reddit-dev
+```
+
+Чтобы образы не накапливались на хосте, в скрипте прописываем:
+```shell script
+docker image prune -f
+```
+
+Перед запуском контейнера с приложением из нового образа, удаляем старый контейнер:
+```shell script
+[ "$(docker ps -a | grep reddit)" ] && docker rm -f reddit
+docker run -d --restart always -p 9292:9292 --name reddit $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+```
+Добавляем флаг `--restart always`, чтобы контейнер с приложением автоматически
+перезапускался после остановки (например, при перезагрузке хоста).
+
+## 8. Отправка оповещений в Slack
+
+https://docs.gitlab.com/ee/user/project/integrations/slack.html
+
 # ДЗ - Занятие 17
 
 ## 1. None network driver
