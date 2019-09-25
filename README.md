@@ -101,7 +101,7 @@ https://github.com/prometheus/node_exporter
         - 'node-exporter:9100'
 ```
 
-Собираем docker образ и пересоздаём сервисы:
+Пересобираем docker образ Prometheus с обновлённым конфигом и перезапускаем сервисы:
 ```shell script
 cd monitoring/prometheus/
 docker build -t $USER_NAME/prometheus .
@@ -114,13 +114,51 @@ docker-compose up -d
 ## 4. Пушим образы на DockerHub
 
 ```shell script
-docker push $USERNAME/ui
-docker push $USERNAME/comment
-docker push $USERNAME/post
-docker push $USERNAME/prometheus
+docker push $USER_NAME/ui
+docker push $USER_NAME/comment
+docker push $USER_NAME/post
+docker push $USER_NAME/prometheus
 ```
 
 Собранные образы запушены в репозиторий https://cloud.docker.com/u/alakhno88/
+
+## 5. Мониторинг MongoDB
+
+Для мониторинга MongoDB можно использовать экспортёр https://github.com/percona/mongodb_exporter
+
+Собираем docker-образ экспортёра для MongoDB:
+```shell script
+git clone git@github.com:percona/mongodb_exporter.git
+cd mongodb_exporter
+docker build -t $USER_NAME/mongodb_exporter .
+```
+
+В `docker-compose.yml` добавляем сервис `mongodb-exporter`:
+```yaml
+  mongodb-exporter:
+    image: ${USERNAME}/mongodb-exporter
+    environment:
+      - MONGODB_URI=mongodb://mongo_db:27017
+    networks:
+      - back-net
+```
+В конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'mongodb'
+    static_configs:
+      - targets:
+        - 'mongodb-exporter:9216'
+```
+
+Пересобираем docker образ Prometheus с обновлённым конфигом и перезапускаем сервисы:
+```shell script
+cd monitoring/prometheus/
+docker build -t $USER_NAME/prometheus .
+
+cd docker
+docker-compose down
+docker-compose up -d
+```
 
 # ДЗ - Занятие 19
 
