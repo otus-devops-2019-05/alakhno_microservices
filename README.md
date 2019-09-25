@@ -2,6 +2,36 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 20
+
+## 1. Запуск Prometheus
+
+Добавляем правила фаервола для Prometheus и Puma:
+```shell script
+gcloud compute firewall-rules create prometheus-default --allow tcp:9090
+gcloud compute firewall-rules create puma-default --allow tcp:9292
+```
+
+Создаём хост:
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
+
+eval $(docker-machine env docker-host)
+```
+
+Запускаем Prometheus:
+```shell script
+docker run --rm -p 9090:9090 -d --name prometheus  prom/prometheus
+docker-machine ip docker-host
+docker stop prometheus
+``` 
+
 # ДЗ - Занятие 19
 
 ## 1. Установка Gitlab CI
@@ -83,7 +113,7 @@ git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
         - ruby simpletest.rb
     ```
 
-# 4. Работа с окружениями
+## 4. Работа с окружениями
 
 Добавляем dev-окружение:
 ```yaml
@@ -135,7 +165,7 @@ git tag 2.4.10
 git push gitlab gitlab-ci-1 --tags
 ```
 
-# 5. Динамические окружения
+## 5. Динамические окружения
 
 Выкатка на выделенный стенд для каждой ветки при помощи динамических окружений:
 ```yaml
@@ -175,7 +205,7 @@ branch review:
 deploy_dev_job стал иногда падать вот с такой ошибкой: https://gitlab.com/gitlab-org/gitlab-foss/issues/43286
 Перезапуск job'а через интерфейс Gitlab помогает.
 
-## 7. Выкатка на dev окржуение
+## 7. Выкатка на dev окружение
 
 Создаём машинку для dev стенда:
 ```shell script
