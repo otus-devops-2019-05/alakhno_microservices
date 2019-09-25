@@ -32,6 +32,45 @@ docker-machine ip docker-host
 docker stop prometheus
 ``` 
 
+## 2. Мониторинг состояния микросервисов
+
+Создаём docker образ для Prometheus с нашим конфигом:
+```shell script
+cd monitoring/prometheus
+export USER_NAME=alakhno88
+docker build -t $USER_NAME/prometheus .
+```
+
+Собираем образы docker образы микросервисов:
+```shell script
+for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
+```
+
+Добавляем в `docker/docker-compose.yml` сервис `prometheus`:
+```yaml
+services:
+  ...
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - back-net
+      - front-net
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+```
+
+Запускаем микросервисы и Prometheus:
+```shell script
+cd docker
+docker-compose up -d
+```
+
 # ДЗ - Занятие 19
 
 ## 1. Установка Gitlab CI
