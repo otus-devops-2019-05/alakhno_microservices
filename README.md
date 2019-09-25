@@ -160,6 +160,48 @@ docker-compose down
 docker-compose up -d
 ```
 
+## 6. Мониторинг сервисов с помощью blackbox экспортера
+
+В `docker-compose.yml` добавляем сервис `mongodb-exporter`:
+```yaml
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.15.1
+    networks:
+      - back-net
+      - front-net
+```
+
+В конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    static_configs:
+      - targets:
+          - 'comment:9292/healthcheck'
+          - 'post:5000/healthcheck'
+          - 'ui:9292'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+```
+
+Пересобираем docker образ Prometheus с обновлённым конфигом и перезапускаем сервисы:
+```shell script
+cd monitoring/prometheus/
+docker build -t $USER_NAME/prometheus .
+
+cd docker
+docker-compose down
+docker-compose up -d
+```
+
 # ДЗ - Занятие 19
 
 ## 1. Установка Gitlab CI
