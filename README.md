@@ -202,6 +202,19 @@ docker-compose down
 docker-compose up -d
 ```
 
+## 7. Makefile для сборки и пуша docker образов
+
+Для сборки образов добавлены цели `build-all`, `build-comment`, `build-post` и `build-prometheus`.
+
+Для пуша образов добавлены цели `push-all`,  `push-comment`, `push-post` и `push-prometheus`.
+
+Чтобы собрать и загрузить на DockerHub все образы надо выполнить:
+
+```shell script
+make build-all
+make push-all
+```
+
 # ДЗ - Занятие 19
 
 ## 1. Установка Gitlab CI
