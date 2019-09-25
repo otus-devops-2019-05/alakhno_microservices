@@ -71,6 +71,57 @@ cd docker
 docker-compose up -d
 ```
 
+## 3. Сбор метрик хоста
+
+Для сбора метрик хоста и их отдаче в Prometheus можно использовать Node экспортёр:
+https://github.com/prometheus/node_exporter
+
+Для этого в `docker-compose.yml` добавляем сервис `node-exporter`:
+```yaml
+  node-exporter:
+    image: prom/node-exporter:v0.15.2
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - back-net
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+```
+
+А в конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'node'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+```
+
+Собираем docker образ и пересоздаём сервисы:
+```shell script
+cd monitoring/prometheus/
+docker build -t $USER_NAME/prometheus .
+
+cd docker
+docker-compose down
+docker-compose up -d
+```
+
+## 4. Пушим образы на DockerHub
+
+```shell script
+docker push $USERNAME/ui
+docker push $USERNAME/comment
+docker push $USERNAME/post
+docker push $USERNAME/prometheus
+```
+
+Собранные образы запушены в репозиторий https://cloud.docker.com/u/alakhno88/
+
 # ДЗ - Занятие 19
 
 ## 1. Установка Gitlab CI
