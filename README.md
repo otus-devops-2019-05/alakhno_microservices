@@ -32,6 +32,51 @@ docker-compose up -d
 docker-compose -f docker-compose-monitoring.yml up -d
 ```
 
+## 2. Подключение cAdvisor
+
+В `docker-compose-monitoring.yml` добавляем сервис `cadvisor`:
+```yaml
+  cadvisor:
+    image: google/cadvisor:v0.29.0
+    volumes:
+      - '/:/rootfs:ro'
+      - '/var/run:/var/run:rw'
+      - '/sys:/sys:ro'
+      - '/var/lib/docker/:/var/lib/docker:ro'
+    ports:
+      - '8080:8080'
+    networks:
+      - back-net
+      - front-net
+```
+
+В конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+        - 'cadvisor:8080'
+```
+
+Пересобираем образ Prometheus:
+```shell script
+make prometheus
+```
+
+Добавляем правило фаервола для cAdvisor:
+```shell script
+gcloud compute firewall-rules create cadvisor-default --allow tcp:8080
+```
+
+Перезапускаем мониторинг:
+```shell script
+cd docker
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+cAdvisor доступен по адресу http://<docker-host>:8080
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
