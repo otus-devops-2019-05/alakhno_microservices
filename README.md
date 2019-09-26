@@ -2,6 +2,36 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 21
+
+## 1. Подготовка окружения
+
+Подготовка окружения:
+
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
+
+eval $(docker-machine env docker-host)
+``` 
+
+Выносим конфигурацию мониторинга из `docker-compose.yml` в `docker-compose-monitoring.yml`:
+
+```shell script
+cd docker
+
+# запуск приложений
+docker-compose up -d
+
+# запуск мониторинга
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
@@ -51,7 +81,7 @@ for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
 services:
   ...
   prometheus:
-    image: ${USERNAME}/prometheus
+    image: ${USER_NAME}/prometheus
     ports:
       - '9090:9090'
     volumes:
@@ -136,7 +166,7 @@ docker build -t $USER_NAME/mongodb_exporter .
 В `docker-compose.yml` добавляем сервис `mongodb-exporter`:
 ```yaml
   mongodb-exporter:
-    image: ${USERNAME}/mongodb-exporter
+    image: ${USER_NAME}/mongodb-exporter
     environment:
       - MONGODB_URI=mongodb://mongo_db:27017
     networks:
@@ -528,7 +558,7 @@ docker network connect front_net comment
 ## 5. Запуск приложения с помощью docker-compose
 
 ```shell script
-export USERNAME=alakhno88
+export USER_NAME=alakhno88
 docker-compose up -d
 docker-compose ps
 ```
