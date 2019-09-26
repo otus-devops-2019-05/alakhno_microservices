@@ -13,4 +13,7 @@
 service_account.json
 
 # Packer
-docker-monolith/infra/packer/variables.json
+docker/docker-monolith/infra/packer/variables.json
+
+# Env
+docker/.env

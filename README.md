@@ -2,6 +2,219 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 20
+
+## 1. Запуск Prometheus
+
+Добавляем правила фаервола для Prometheus и Puma:
+```shell script
+gcloud compute firewall-rules create prometheus-default --allow tcp:9090
+gcloud compute firewall-rules create puma-default --allow tcp:9292
+```
+
+Создаём хост:
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
+
+eval $(docker-machine env docker-host)
+```
+
+Запускаем Prometheus:
+```shell script
+docker run --rm -p 9090:9090 -d --name prometheus  prom/prometheus
+docker-machine ip docker-host
+docker stop prometheus
+``` 
+
+## 2. Мониторинг состояния микросервисов
+
+Создаём docker образ для Prometheus с нашим конфигом:
+```shell script
+cd monitoring/prometheus
+export USER_NAME=alakhno88
+docker build -t $USER_NAME/prometheus .
+```
+
+Собираем образы docker образы микросервисов:
+```shell script
+for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
+```
+
+Добавляем в `docker/docker-compose.yml` сервис `prometheus`:
+```yaml
+services:
+  ...
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - back-net
+      - front-net
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+```
+
+Запускаем микросервисы и Prometheus:
+```shell script
+cd docker
+docker-compose up -d
+```
+
+## 3. Сбор метрик хоста
+
+Для сбора метрик хоста и их отдаче в Prometheus можно использовать Node экспортёр:
+https://github.com/prometheus/node_exporter
+
+Для этого в `docker-compose.yml` добавляем сервис `node-exporter`:
+```yaml
+  node-exporter:
+    image: prom/node-exporter:v0.15.2
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - back-net
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+```
+
+А в конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'node'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+```
+
+Пересобираем docker образ Prometheus с обновлённым конфигом и перезапускаем сервисы:
+```shell script
+cd monitoring/prometheus/
+docker build -t $USER_NAME/prometheus .
+
+cd docker
+docker-compose down
+docker-compose up -d
+```
+
+## 4. Пушим образы на DockerHub
+
+```shell script
+docker push $USER_NAME/ui
+docker push $USER_NAME/comment
+docker push $USER_NAME/post
+docker push $USER_NAME/prometheus
+```
+
+Собранные образы запушены в репозиторий https://cloud.docker.com/u/alakhno88/
+
+## 5. Мониторинг MongoDB
+
+Для мониторинга MongoDB можно использовать экспортёр https://github.com/percona/mongodb_exporter
+
+Собираем docker-образ экспортёра для MongoDB:
+```shell script
+git clone git@github.com:percona/mongodb_exporter.git
+cd mongodb_exporter
+docker build -t $USER_NAME/mongodb_exporter .
+```
+
+В `docker-compose.yml` добавляем сервис `mongodb-exporter`:
+```yaml
+  mongodb-exporter:
+    image: ${USERNAME}/mongodb-exporter
+    environment:
+      - MONGODB_URI=mongodb://mongo_db:27017
+    networks:
+      - back-net
+```
+В конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'mongodb'
+    static_configs:
+      - targets:
+        - 'mongodb-exporter:9216'
+```
+
+Пересобираем docker образ Prometheus с обновлённым конфигом и перезапускаем сервисы:
+```shell script
+cd monitoring/prometheus/
+docker build -t $USER_NAME/prometheus .
+
+cd docker
+docker-compose down
+docker-compose up -d
+```
+
+## 6. Мониторинг сервисов с помощью blackbox экспортера
+
+В `docker-compose.yml` добавляем сервис `mongodb-exporter`:
+```yaml
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.15.1
+    networks:
+      - back-net
+      - front-net
+```
+
+В конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    static_configs:
+      - targets:
+          - 'comment:9292/healthcheck'
+          - 'post:5000/healthcheck'
+          - 'ui:9292'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+```
+
+Пересобираем docker образ Prometheus с обновлённым конфигом и перезапускаем сервисы:
+```shell script
+cd monitoring/prometheus/
+docker build -t $USER_NAME/prometheus .
+
+cd docker
+docker-compose down
+docker-compose up -d
+```
+
+## 7. Makefile для сборки и пуша docker образов
+
+Для сборки образов добавлены цели `build-all`, `build-comment`, `build-post` и `build-prometheus`.
+
+Для пуша образов добавлены цели `push-all`,  `push-comment`, `push-post` и `push-prometheus`.
+
+Чтобы собрать и загрузить на DockerHub все образы надо выполнить:
+
+```shell script
+make build-all
+make push-all
+```
+
 # ДЗ - Занятие 19
 
 ## 1. Установка Gitlab CI
@@ -83,7 +296,7 @@ git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
         - ruby simpletest.rb
     ```
 
-# 4. Работа с окружениями
+## 4. Работа с окружениями
 
 Добавляем dev-окружение:
 ```yaml
@@ -135,7 +348,7 @@ git tag 2.4.10
 git push gitlab gitlab-ci-1 --tags
 ```
 
-# 5. Динамические окружения
+## 5. Динамические окружения
 
 Выкатка на выделенный стенд для каждой ветки при помощи динамических окружений:
 ```yaml
@@ -175,7 +388,7 @@ branch review:
 deploy_dev_job стал иногда падать вот с такой ошибкой: https://gitlab.com/gitlab-org/gitlab-foss/issues/43286
 Перезапуск job'а через интерфейс Gitlab помогает.
 
-## 7. Выкатка на dev окржуение
+## 7. Выкатка на dev окружение
 
 Создаём машинку для dev стенда:
 ```shell script
