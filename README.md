@@ -149,6 +149,50 @@ docker-compose -f docker-compose-monitoring.yml up -d
 - `rate(post_count[1h])`
 - `rate(comment_count[1h])`
 
+## 6. Алертинг при помощи Alertmanager
+
+В `monitoring/alertmanager` добавляем `config.yml` для Alertmanager.
+Также добавляем `Dockerfile` для сборки образа alertmanager с нашим конфигом.
+
+Собираем образ:
+```shell script
+cd monitoring/alertmanager
+docker build -t $USER_NAME/alertmanager .
+```
+
+В `docker-compose-monitoring.yml` добавляем сервис `alertmanager`:
+
+```shell script
+  alertmanager:
+    image: ${USER_NAME}/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+    ports:
+      - 9093:9093
+    networks:
+      - back-net
+```
+
+Добавляем файл `monitoring/prometheus/alerts.yml` с правилами алертинга.
+Отправляем алерт, если какой-то из сервисов выпал более, чем на одну минуту.
+
+Прописываем копирование `alerts.yml` в `monitoring/prometheus/Dockerfile`.
+Добавляем информацию о правилах в конфиг `monitoring/prometheus/prometheus.yml`.
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Добавляем правило фаервола для веб интерфейса alertmanager:
+```shell script
+gcloud compute firewall-rules create alertmanager-default --allow tcp:9093
+```
+
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
