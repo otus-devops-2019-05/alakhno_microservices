@@ -32,7 +32,9 @@ docker-compose up -d
 docker-compose -f docker-compose-monitoring.yml up -d
 ```
 
-## 2. Подключение cAdvisor
+## 2. Подключение cAdvisor для мониторинга контейнеров
+
+https://github.com/google/cadvisor
 
 В `docker-compose-monitoring.yml` добавляем сервис `cadvisor`:
 ```yaml
@@ -76,6 +78,35 @@ docker-compose -f docker-compose-monitoring.yml up -d
 ```
 
 cAdvisor доступен по адресу http://<docker-host>:8080
+
+## 3. Визуализация метрик при помощи Grafana
+
+В `docker-compose-monitoring.yml` добавляем сервис `grafana`:
+
+```shell script
+  grafana:
+    image: grafana/grafana:5.0.0
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    networks:
+      - back-net
+```
+
+Добавляем правило фаервола для Grafana:
+```shell script
+gcloud compute firewall-rules create grafana-default --allow tcp:3000
+```
+
+Grafana доступна по адресу http://<docker-host>:3000
+
+Имопртируем в Grafana дашборд https://grafana.com/grafana/dashboards/893
 
 # ДЗ - Занятие 20
 
