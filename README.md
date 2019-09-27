@@ -107,6 +107,37 @@ gcloud compute firewall-rules create grafana-default --allow tcp:3000
 Grafana доступна по адресу http://<docker-host>:3000
 
 Имопртируем в Grafana дашборд https://grafana.com/grafana/dashboards/893
+для мониторинга докера и системы.
+
+## 4. Мониторинг работы приложения
+
+Сервис ui в качестве метрик приложения отдаёт счётчик `ui_request_count`
+с количеством приходящих запросов и гистограмму `ui_request_latency_seconds`
+с информацией о времени обработки запросов.
+
+Сервис post в качестве метрики приложения отдаёт гистограмму
+`post_read_db_seconds` с информацией о времени поиска поста в БД.
+
+В конфиг `prometheus.yml` добавляем сбор информации с сервиса post:
+```yaml
+  - job_name: 'post'
+    static_configs:
+      - targets:
+        - 'post:5000'
+```
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down 
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Через интерфейс Grafana добавил графики по сервису UI для общего количества
+запросов в минуту и количества запросов с ошибками в минуту:
+- `rate(ui_request_count[1m])`
+- `rate(ui_request_count{http_status=~"^[45].*""}[1m])`
 
 # ДЗ - Занятие 20
 
