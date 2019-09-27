@@ -139,6 +139,9 @@ docker-compose -f docker-compose-monitoring.yml up -d
 - `rate(ui_request_count[1m])`
 - `rate(ui_request_count{http_status=~"^[45].*""}[1m])`
 
+Добавим график с 95й процентилью времени ответа на запрос:
+`histogram_quantile(0.95, sum(rate(ui_request_response_time_bucket[5m])) by (le))`
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
