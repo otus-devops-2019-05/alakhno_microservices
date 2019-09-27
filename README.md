@@ -198,6 +198,38 @@ gcloud compute firewall-rules create alertmanager-default --allow tcp:9093
 
 Собранные образы запушены в репозиторий https://cloud.docker.com/u/alakhno88/
 
+## 8. Передача метрик из Docker в Prometheus
+
+https://docs.docker.com/config/thirdparty/prometheus/
+
+Подключаем отдачу метрик в Docker:
+```shell script
+docker-machine ssh docker-host
+sudo vim /etc/docker/daemon.json
+{
+  "metrics-addr" : "0.0.0.0:9323",
+  "experimental" : true
+}
+sudo service docker restart 
+```
+
+В конфиг `prometheus.yml` добавляем сбор информации с Docker:
+```yaml
+  - job_name: 'docker'
+    static_configs:
+      - targets:
+        - '172.17.0.1:9323'
+```
+Для доступа к метрикам из Docker используем адрес бриджа docker0 172.17.0.1.
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down 
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
