@@ -192,6 +192,11 @@ docker-compose -f docker-compose-monitoring.yml up -d
 gcloud compute firewall-rules create alertmanager-default --allow tcp:9093
 ```
 
+## 7. Собираем и пушим образы на DockerHub при помощи make
+
+Добавляем в Makefile цели для сборки и пуша docker образа alertmanager.
+
+Собранные образы запушены в репозиторий https://cloud.docker.com/u/alakhno88/
 
 # ДЗ - Занятие 20
 

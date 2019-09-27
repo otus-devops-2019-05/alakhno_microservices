@@ -1,8 +1,8 @@
 all: build-all push-all
 
-build-all: build-comment build-post build-ui build-prometheus
+build-all: build-comment build-post build-ui build-prometheus build-alertmanager
 
-push-all: push-comment push-post push-ui push-prometheus
+push-all: push-comment push-post push-ui push-prometheus push-alertmanager
 
 comment: build-comment push-comment
 
@@ -35,3 +35,11 @@ build-prometheus:
 
 push-prometheus:
 	docker push $(USER_NAME)/prometheus
+
+alertmanager: build-alertmanager push-alertmanager
+
+build-alertmanager:
+	docker build -t $(USER_NAME)/alertmanager -f monitoring/alertmanager/Dockerfile monitoring/alertmanager/
+
+push-alertmanager:
+	docker push $(USER_NAME)/alertmanager
