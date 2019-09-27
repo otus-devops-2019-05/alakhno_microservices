@@ -142,6 +142,13 @@ docker-compose -f docker-compose-monitoring.yml up -d
 Добавим график с 95й процентилью времени ответа на запрос:
 `histogram_quantile(0.95, sum(rate(ui_request_response_time_bucket[5m])) by (le))`
 
+## 5. Мониторинг бизнес-логики
+
+Создаём дашборд Business_Logic_Monitoring с графиками количества постов
+и комментов за последний час:
+- `rate(post_count[1h])`
+- `rate(comment_count[1h])`
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
