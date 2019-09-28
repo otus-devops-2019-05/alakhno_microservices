@@ -56,7 +56,7 @@ scrape_configs:
       - targets:
         - 'cadvisor:8080'
 
-  - job_name: 'docker-metrics'
+  - job_name: 'docker-engine-metrics'
     static_configs:
       - targets:
         - '172.17.0.1:9323'

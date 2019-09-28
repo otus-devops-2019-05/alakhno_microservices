@@ -200,7 +200,9 @@ gcloud compute firewall-rules create alertmanager-default --allow tcp:9093
 
 ## 8. Передача метрик из Docker в Prometheus
 
-https://docs.docker.com/config/thirdparty/prometheus/
+Что почитать:
+- https://docs.docker.com/config/thirdparty/prometheus/
+- https://medium.com/@basi/docker-swarm-metrics-in-prometheus-e02a6a5745a
 
 Подключаем отдачу метрик в Docker:
 ```shell script
@@ -213,9 +215,15 @@ sudo vim /etc/docker/daemon.json
 sudo service docker restart 
 ```
 
+Добавляем правило фаервола для внешнего доступа к метрикам:
+```shell script
+gcloud compute firewall-rules create docker-metrics-default --allow tcp:9323
+curl http://$(docker-machine ip docker-host):9323/metrics
+```
+
 В конфиг `prometheus.yml` добавляем сбор информации с Docker:
 ```yaml
-  - job_name: 'docker'
+  - job_name: 'docker-engine-metrics'
     static_configs:
       - targets:
         - '172.17.0.1:9323'
@@ -229,6 +237,12 @@ cd docker
 docker-compose -f docker-compose-monitoring.yml down 
 docker-compose -f docker-compose-monitoring.yml up -d
 ```
+
+Для визуализации метрик docker-engine-metrics в Grafana можно использовать
+готовый дашобрд https://grafana.com/grafana/dashboards/1229
+
+Метрик пока значительно меньше, чем в cAdvisor. Сейчас есть только метрики
+до docker демону, но нет ничего для мониторинга состояния контейнеров.
 
 # ДЗ - Занятие 20
 
