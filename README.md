@@ -244,6 +244,93 @@ docker-compose -f docker-compose-monitoring.yml up -d
 Метрик пока значительно меньше, чем в cAdvisor. Сейчас есть только метрики
 до docker демону, но нет ничего для мониторинга состояния контейнеров.
 
+## 9. Подключение Telegraf для сбора метрик с Docker
+
+Что почитать:
+- https://hub.docker.com/_/telegraf
+- https://github.com/influxdata/telegraf/tree/master/plugins/outputs/prometheus_client
+- https://github.com/influxdata/telegraf/tree/master/plugins/inputs/docker
+
+Создаём заготовку для конфига Telegraf:
+```shell script
+cd moniroting/telegraf/
+docker run --rm telegraf telegraf config > telegraf.conf
+```
+
+Отключаем (комментируем) плагин для передачи данных в InfluxDB:
+```
+# [[outputs.influxdb]]
+```
+
+Подключаем (раскомментируем) плагин для передачи данных в Prometheus:
+```
+[[outputs.prometheus_client]]
+  ## Address to listen on
+  listen = ":9273"
+```
+
+Подключаем (раскомментируем) плагин для сбора метрик с Docker:
+```
+# Read metrics about docker containers
+[[inputs.docker]]
+...
+```
+
+Создаём `monitoring/telegraf/Dockerfile` для образа с нашим конфигом:
+```
+FROM telegraf:1.12
+ADD telegraf.conf /etc/telegraf/
+```
+
+Добавляем цели для сборки и пуша образа в Makefile и собираем образ:
+```shell script
+make telegraf
+```
+
+В `docker-compose-monitoring.yml` добавляем сервис `telegraf`:
+
+```shell script
+  telegraf:
+    image: ${USER_NAME}/telegraf
+    ports:
+      - 9273:9273
+    networks:
+      - back-net
+      - front-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+В конфиг `prometheus.yml` добавляем сбор информации с Telegraf:
+```yaml
+  - job_name: 'telegraf'
+    static_configs:
+      - targets:
+        - 'telegraf:9273'
+```
+
+Добавляем правило фаервола для внешнего доступа к метрикам:
+```shell script
+gcloud compute firewall-rules create telegraf-default --allow tcp:9273
+curl http://$(docker-machine ip docker-host):9273/metrics
+```
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down 
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Непосредственно для Docker у Telegraf меньше метрик по сравнению с cAdvisor,
+зато большое количество плагинов для других метрик:
+https://benbailey.me/2015/06/docker-telegraf-metrics/
+
+Для визуализации метрик Telegraf в Grafana использовал готовый дашобрд
+https://grafana.com/grafana/dashboards/6149
+
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus

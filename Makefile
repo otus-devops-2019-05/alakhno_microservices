@@ -1,8 +1,8 @@
 all: build-all push-all
 
-build-all: build-comment build-post build-ui build-prometheus build-alertmanager
+build-all: build-comment build-post build-ui build-prometheus build-alertmanager build-telegraf
 
-push-all: push-comment push-post push-ui push-prometheus push-alertmanager
+push-all: push-comment push-post push-ui push-prometheus push-alertmanager push-telegraf
 
 comment: build-comment push-comment
 
@@ -43,3 +43,11 @@ build-alertmanager:
 
 push-alertmanager:
 	docker push $(USER_NAME)/alertmanager
+
+telegraf: build-telegraf push-telegraf
+
+build-telegraf:
+	docker build -t $(USER_NAME)/telegraf -f monitoring/telegraf/Dockerfile monitoring/telegraf/
+
+push-telegraf:
+	docker push $(USER_NAME)/telegraf
