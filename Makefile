@@ -1,27 +1,53 @@
-build-all: build-comment build-post build-ui build-prometheus
+all: build-all push-all
+
+build-all: build-comment build-post build-ui build-prometheus build-alertmanager build-telegraf
+
+push-all: push-comment push-post push-ui push-prometheus push-alertmanager push-telegraf
+
+comment: build-comment push-comment
 
 build-comment:
 	docker build -t $(USER_NAME)/comment -f src/comment/Dockerfile src/comment/
 
-build-post:
-	docker build -t $(USER_NAME)/post -f src/post-py/Dockerfile src/post-py/
-
-build-ui:
-	docker build -t $(USER_NAME)/ui -f src/ui/Dockerfile src/ui/
-
-build-prometheus:
-	docker build -t $(USER_NAME)/prometheus -f monitoring/prometheus/Dockerfile monitoring/prometheus/
-
-push-all: push-comment push-post push-ui push-prometheus
-
 push-comment:
 	docker push $(USER_NAME)/comment
+
+post: build-post push-post
+
+build-post:
+	docker build -t $(USER_NAME)/post -f src/post-py/Dockerfile src/post-py/
 
 push-post:
 	docker push $(USER_NAME)/post
 
+ui: build-ui push-ui
+
+build-ui:
+	docker build -t $(USER_NAME)/ui -f src/ui/Dockerfile src/ui/
+
 push-ui:
 	docker push $(USER_NAME)/ui
 
+prometheus: build-prometheus push-prometheus
+
+build-prometheus:
+	docker build -t $(USER_NAME)/prometheus -f monitoring/prometheus/Dockerfile monitoring/prometheus/
+
 push-prometheus:
 	docker push $(USER_NAME)/prometheus
+
+alertmanager: build-alertmanager push-alertmanager
+
+build-alertmanager:
+	docker build -t $(USER_NAME)/alertmanager -f monitoring/alertmanager/Dockerfile monitoring/alertmanager/
+
+push-alertmanager:
+	docker push $(USER_NAME)/alertmanager
+
+telegraf: build-telegraf push-telegraf
+
+build-telegraf:
+	docker build -t $(USER_NAME)/telegraf -f monitoring/telegraf/Dockerfile monitoring/telegraf/
+
+push-telegraf:
+	docker push $(USER_NAME)/telegraf

@@ -1,0 +1,96 @@
+version: '3.3'
+services:
+  prometheus:
+    image: ${USER_NAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - back-net
+      - front-net
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+
+  node-exporter:
+    image: prom/node-exporter:v0.15.2
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - back-net
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+
+  mongodb-exporter:
+    image: ${USER_NAME}/mongodb-exporter
+    environment:
+      - MONGODB_URI=mongodb://mongo_db:27017
+    networks:
+      - back-net
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.15.1
+    networks:
+      - back-net
+      - front-net
+
+  cadvisor:
+    image: google/cadvisor:v0.29.0
+    volumes:
+      - '/:/rootfs:ro'
+      - '/var/run:/var/run:rw'
+      - '/sys:/sys:ro'
+      - '/var/lib/docker/:/var/lib/docker:ro'
+    ports:
+      - '8080:8080'
+    networks:
+      - back-net
+      - front-net
+
+  grafana:
+    image: grafana/grafana:5.0.0
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    networks:
+      - back-net
+
+  alertmanager:
+    image: ${USER_NAME}/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+    ports:
+      - 9093:9093
+    networks:
+      - back-net
+
+  telegraf:
+    image: ${USER_NAME}/telegraf
+    ports:
+      - 9273:9273
+    networks:
+      - back-net
+      - front-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  back-net:
+  front-net:

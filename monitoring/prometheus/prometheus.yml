@@ -18,6 +18,11 @@ scrape_configs:
       - targets:
         - 'comment:9292'
 
+  - job_name: 'post'
+    static_configs:
+      - targets:
+        - 'post:5000'
+
   - job_name: 'node'
     static_configs:
       - targets:
@@ -35,9 +40,9 @@ scrape_configs:
         - http_2xx
     static_configs:
       - targets:
-          - 'comment:9292/healthcheck'
-          - 'post:5000/healthcheck'
-          - 'ui:9292'
+        - 'comment:9292/healthcheck'
+        - 'post:5000/healthcheck'
+        - 'ui:9292'
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -45,3 +50,28 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: blackbox-exporter:9115
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+        - 'cadvisor:8080'
+
+  - job_name: 'docker-engine-metrics'
+    static_configs:
+      - targets:
+        - '172.17.0.1:9323'
+
+  - job_name: 'telegraf'
+    static_configs:
+      - targets:
+        - 'telegraf:9273'
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+  - scheme: http
+    static_configs:
+      - targets:
+        - "alertmanager:9093"

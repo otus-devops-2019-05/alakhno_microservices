@@ -2,6 +2,335 @@
 
 [![Build Status](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices.svg?branch=master)](https://travis-ci.com/otus-devops-2019-05/alakhno_microservices)
 
+# ДЗ - Занятие 21
+
+## 1. Подготовка окружения
+
+Подготовка окружения:
+
+```shell script
+export GOOGLE_PROJECT=<id проекта>
+
+docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
+
+eval $(docker-machine env docker-host)
+``` 
+
+Выносим конфигурацию мониторинга из `docker-compose.yml` в `docker-compose-monitoring.yml`:
+
+```shell script
+cd docker
+
+# запуск приложений
+docker-compose up -d
+
+# запуск мониторинга
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+## 2. Подключение cAdvisor для мониторинга контейнеров
+
+https://github.com/google/cadvisor
+
+В `docker-compose-monitoring.yml` добавляем сервис `cadvisor`:
+```yaml
+  cadvisor:
+    image: google/cadvisor:v0.29.0
+    volumes:
+      - '/:/rootfs:ro'
+      - '/var/run:/var/run:rw'
+      - '/sys:/sys:ro'
+      - '/var/lib/docker/:/var/lib/docker:ro'
+    ports:
+      - '8080:8080'
+    networks:
+      - back-net
+      - front-net
+```
+
+В конфиг `prometheus.yml` добавляем:
+```yaml
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+        - 'cadvisor:8080'
+```
+
+Пересобираем образ Prometheus:
+```shell script
+make prometheus
+```
+
+Добавляем правило фаервола для cAdvisor:
+```shell script
+gcloud compute firewall-rules create cadvisor-default --allow tcp:8080
+```
+
+Перезапускаем мониторинг:
+```shell script
+cd docker
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+cAdvisor доступен по адресу http://<docker-host>:8080
+
+## 3. Визуализация метрик при помощи Grafana
+
+В `docker-compose-monitoring.yml` добавляем сервис `grafana`:
+
+```shell script
+  grafana:
+    image: grafana/grafana:5.0.0
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    networks:
+      - back-net
+```
+
+Добавляем правило фаервола для Grafana:
+```shell script
+gcloud compute firewall-rules create grafana-default --allow tcp:3000
+```
+
+Grafana доступна по адресу http://<docker-host>:3000
+
+Имопртируем в Grafana дашборд https://grafana.com/grafana/dashboards/893
+для мониторинга докера и системы.
+
+## 4. Мониторинг работы приложения
+
+Сервис ui в качестве метрик приложения отдаёт счётчик `ui_request_count`
+с количеством приходящих запросов и гистограмму `ui_request_latency_seconds`
+с информацией о времени обработки запросов.
+
+Сервис post в качестве метрики приложения отдаёт гистограмму
+`post_read_db_seconds` с информацией о времени поиска поста в БД.
+
+В конфиг `prometheus.yml` добавляем сбор информации с сервиса post:
+```yaml
+  - job_name: 'post'
+    static_configs:
+      - targets:
+        - 'post:5000'
+```
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down 
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Через интерфейс Grafana добавил графики по сервису UI для общего количества
+запросов в минуту и количества запросов с ошибками в минуту:
+- `rate(ui_request_count[1m])`
+- `rate(ui_request_count{http_status=~"^[45].*""}[1m])`
+
+Добавим график с 95й процентилью времени ответа на запрос:
+`histogram_quantile(0.95, sum(rate(ui_request_response_time_bucket[5m])) by (le))`
+
+## 5. Мониторинг бизнес-логики
+
+Создаём дашборд Business_Logic_Monitoring с графиками количества постов
+и комментов за последний час:
+- `rate(post_count[1h])`
+- `rate(comment_count[1h])`
+
+## 6. Алертинг при помощи Alertmanager
+
+В `monitoring/alertmanager` добавляем `config.yml` для Alertmanager.
+Также добавляем `Dockerfile` для сборки образа alertmanager с нашим конфигом.
+
+Собираем образ:
+```shell script
+cd monitoring/alertmanager
+docker build -t $USER_NAME/alertmanager .
+```
+
+В `docker-compose-monitoring.yml` добавляем сервис `alertmanager`:
+
+```shell script
+  alertmanager:
+    image: ${USER_NAME}/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+    ports:
+      - 9093:9093
+    networks:
+      - back-net
+```
+
+Добавляем файл `monitoring/prometheus/alerts.yml` с правилами алертинга.
+Отправляем алерт, если какой-то из сервисов выпал более, чем на одну минуту.
+
+Прописываем копирование `alerts.yml` в `monitoring/prometheus/Dockerfile`.
+Добавляем информацию о правилах в конфиг `monitoring/prometheus/prometheus.yml`.
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Добавляем правило фаервола для веб интерфейса alertmanager:
+```shell script
+gcloud compute firewall-rules create alertmanager-default --allow tcp:9093
+```
+
+## 7. Собираем и пушим образы на DockerHub при помощи make
+
+Добавляем в Makefile цели для сборки и пуша docker образа alertmanager.
+
+Собранные образы запушены в репозиторий https://cloud.docker.com/u/alakhno88/
+
+## 8. Передача метрик из Docker в Prometheus
+
+Что почитать:
+- https://docs.docker.com/config/thirdparty/prometheus/
+- https://medium.com/@basi/docker-swarm-metrics-in-prometheus-e02a6a5745a
+
+Подключаем отдачу метрик в Docker:
+```shell script
+docker-machine ssh docker-host
+sudo vim /etc/docker/daemon.json
+{
+  "metrics-addr" : "0.0.0.0:9323",
+  "experimental" : true
+}
+sudo service docker restart 
+```
+
+Добавляем правило фаервола для внешнего доступа к метрикам:
+```shell script
+gcloud compute firewall-rules create docker-metrics-default --allow tcp:9323
+curl http://$(docker-machine ip docker-host):9323/metrics
+```
+
+В конфиг `prometheus.yml` добавляем сбор информации с Docker:
+```yaml
+  - job_name: 'docker-engine-metrics'
+    static_configs:
+      - targets:
+        - '172.17.0.1:9323'
+```
+Для доступа к метрикам из Docker используем адрес бриджа docker0 172.17.0.1.
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down 
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Для визуализации метрик docker-engine-metrics в Grafana можно использовать
+готовый дашобрд https://grafana.com/grafana/dashboards/1229
+
+Метрик пока значительно меньше, чем в cAdvisor. Сейчас есть только метрики
+до docker демону, но нет ничего для мониторинга состояния контейнеров.
+
+## 9. Подключение Telegraf для сбора метрик с Docker
+
+Что почитать:
+- https://hub.docker.com/_/telegraf
+- https://github.com/influxdata/telegraf/tree/master/plugins/outputs/prometheus_client
+- https://github.com/influxdata/telegraf/tree/master/plugins/inputs/docker
+
+Создаём заготовку для конфига Telegraf:
+```shell script
+cd moniroting/telegraf/
+docker run --rm telegraf telegraf config > telegraf.conf
+```
+
+Отключаем (комментируем) плагин для передачи данных в InfluxDB:
+```
+# [[outputs.influxdb]]
+```
+
+Подключаем (раскомментируем) плагин для передачи данных в Prometheus:
+```
+[[outputs.prometheus_client]]
+  ## Address to listen on
+  listen = ":9273"
+```
+
+Подключаем (раскомментируем) плагин для сбора метрик с Docker:
+```
+# Read metrics about docker containers
+[[inputs.docker]]
+...
+```
+
+Создаём `monitoring/telegraf/Dockerfile` для образа с нашим конфигом:
+```
+FROM telegraf:1.12
+ADD telegraf.conf /etc/telegraf/
+```
+
+Добавляем цели для сборки и пуша образа в Makefile и собираем образ:
+```shell script
+make telegraf
+```
+
+В `docker-compose-monitoring.yml` добавляем сервис `telegraf`:
+
+```shell script
+  telegraf:
+    image: ${USER_NAME}/telegraf
+    ports:
+      - 9273:9273
+    networks:
+      - back-net
+      - front-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+В конфиг `prometheus.yml` добавляем сбор информации с Telegraf:
+```yaml
+  - job_name: 'telegraf'
+    static_configs:
+      - targets:
+        - 'telegraf:9273'
+```
+
+Добавляем правило фаервола для внешнего доступа к метрикам:
+```shell script
+gcloud compute firewall-rules create telegraf-default --allow tcp:9273
+curl http://$(docker-machine ip docker-host):9273/metrics
+```
+
+Пересобираем образ prometheus и пересоздаём инфраструктуру мониторинга:
+```shell script
+make prometheus
+cd docker
+docker-compose -f docker-compose-monitoring.yml down 
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Непосредственно для Docker у Telegraf меньше метрик по сравнению с cAdvisor,
+зато большое количество плагинов для других метрик:
+https://benbailey.me/2015/06/docker-telegraf-metrics/
+
+Для визуализации метрик Telegraf в Grafana использовал готовый дашобрд
+https://grafana.com/grafana/dashboards/6149
+
+
 # ДЗ - Занятие 20
 
 ## 1. Запуск Prometheus
@@ -51,7 +380,7 @@ for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
 services:
   ...
   prometheus:
-    image: ${USERNAME}/prometheus
+    image: ${USER_NAME}/prometheus
     ports:
       - '9090:9090'
     volumes:
@@ -136,7 +465,7 @@ docker build -t $USER_NAME/mongodb_exporter .
 В `docker-compose.yml` добавляем сервис `mongodb-exporter`:
 ```yaml
   mongodb-exporter:
-    image: ${USERNAME}/mongodb-exporter
+    image: ${USER_NAME}/mongodb-exporter
     environment:
       - MONGODB_URI=mongodb://mongo_db:27017
     networks:
@@ -528,7 +857,7 @@ docker network connect front_net comment
 ## 5. Запуск приложения с помощью docker-compose
 
 ```shell script
-export USERNAME=alakhno88
+export USER_NAME=alakhno88
 docker-compose up -d
 docker-compose ps
 ```
